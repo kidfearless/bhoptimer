@@ -631,7 +631,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		RequestFrame(Frame_HookButton, EntIndexToEntRef(entity));
 	}
 
-	else if(StrEqual(classname, "trigger_multiple", false))
+	else if(StrContains(classname, "trigger_", false) != -1)
 	{
 		RequestFrame(Frame_HookTrigger, EntIndexToEntRef(entity));
 	}

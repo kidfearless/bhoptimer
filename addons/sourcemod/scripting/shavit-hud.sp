@@ -1111,7 +1111,7 @@ int AddHUDToBuffer_CSGO(int client, huddata_t data, char[] buffer, int maxlen)
 
 	if(data.bReplay)
 	{
-		StrCat(buffer, maxlen, "<span class='fontSize-l'>");
+		StrCat(buffer, maxlen, "<span class='fontSize-m'>");
 
 		if(data.iStyle != -1 && data.fTime > 0.0 && data.fTime <= data.fWR && Shavit_IsReplayDataLoaded(data.iStyle, data.iTrack))
 		{
@@ -1166,7 +1166,7 @@ int AddHUDToBuffer_CSGO(int client, huddata_t data, char[] buffer, int maxlen)
 	if((gI_HUDSettings[client] & HUD_ZONEHUD) > 0 && data.iZoneHUD != ZoneHUD_None)
 	{
 		char sZoneHUD[64];
-		FormatEx(sZoneHUD, 64, "<span class='fontSize-xxl' color='#%06X'>", ((gI_Gradient.r << 16) + (gI_Gradient.g << 8) + (gI_Gradient.b)));
+		FormatEx(sZoneHUD, 64, "<span class='fontSize-xl' color='#%06X'>", ((gI_Gradient.r << 16) + (gI_Gradient.g << 8) + (gI_Gradient.b)));
 		StrCat(buffer, maxlen, sZoneHUD);
 
 		if(data.iZoneHUD == ZoneHUD_Start)
@@ -1191,7 +1191,7 @@ int AddHUDToBuffer_CSGO(int client, huddata_t data, char[] buffer, int maxlen)
 		return ++iLines;
 	}
 
-	StrCat(buffer, maxlen, "<span class='fontSize-l'>");
+	StrCat(buffer, maxlen, "<span class='fontSize-m'>");
 
 	if(data.iTimerStatus != Timer_Stopped)
 	{

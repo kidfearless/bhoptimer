@@ -1577,9 +1577,15 @@ public Action OpenCheckpointsMenu(int client, int item)
 
 	FormatEx(sDisplay, 64, "%T", "MiscCheckpointNext", client);
 	menu.AddItem("next", sDisplay);
-
-	FormatEx(sDisplay, 64, "%T", "MiscCheckpointReset", client);
-	menu.AddItem("reset", sDisplay);
+	if(StrContains(gS_StyleStrings[gI_Style[client]].sSpecialString, "TAS", false) == -1)
+	{
+		FormatEx(sDisplay, 64, "%T", "MiscCheckpointReset", client);
+		menu.AddItem("reset", sDisplay);
+	}
+	else
+	{
+		menu.AddItem("tas", "Open TAS Menu");
+	}
 
 	if(!bSegmented)
 	{
@@ -1593,7 +1599,7 @@ public Action OpenCheckpointsMenu(int client, int item)
 		menu.AddItem(sInfo, sDisplay);
 	}
 
-	menu.Pagination = MENU_NO_PAGINATION;
+	//menu.Pagination = MENU_NO_PAGINATION;
 	menu.ExitButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 
@@ -1657,11 +1663,21 @@ public int MenuHandler_Checkpoints(Menu menu, MenuAction action, int param1, int
 					gA_CheckpointsCache[param1].iCurrentCheckpoint++;
 				}
 			}
-
 			case 4:
 			{
-				ResetCheckpoints(param1);
+				char sInfo[8];
+				menu.GetItem(param2, sInfo, 8);
+				if(StrEqual(sInfo, "tas", false))
+				{
+					FakeClientCommand(param1, "sm_tasmenu");
+					return 0;
+				}
+				else
+				{
+					ResetCheckpoints(param1);
+				}
 			}
+			
 
 			default:
 			{

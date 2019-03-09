@@ -117,6 +117,7 @@ bool gB_HideNameChange = false;
 bool gB_DontCallTimer = false;
 bool gB_HijackFrame[MAXPLAYERS+1];
 float gF_HijackedAngles[MAXPLAYERS+1][2];
+int gI_Modulus[MAXPLAYERS+1];
 
 // plugin cvars
 ConVar gCV_Enabled = null;
@@ -1716,6 +1717,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 	else if(ReplayEnabled(Shavit_GetBhopStyle(client)) && Shavit_GetTimerStatus(client) == Timer_Running)
 	{
+		int mod = Shavit_GetClientMod(client);
 		if((gI_PlayerFrames[client] / gF_Tickrate) > gCV_TimeLimit.FloatValue)
 		{
 			// in case of bad timing
@@ -1727,34 +1729,43 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			return Plugin_Continue;
 		}
 
-		gA_PlayerFrames[client].Resize(gI_PlayerFrames[client] + 1);
-
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[0], 0);
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[1], 1);
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[2], 2);
-
-		if(!gB_HijackFrame[client])
+		if(mod == 0)
 		{
-			float vecEyes[3];
-			GetClientEyeAngles(client, vecEyes);
-
-			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecEyes[0], 3);
-			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecEyes[1], 4);
+			mod = 1;
 		}
-
-		else
+		
+		if(gI_Modulus[client]++ % mod == 0)
 		{
-			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], gF_HijackedAngles[client][0], 3);
-			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], gF_HijackedAngles[client][1], 4);
 
-			gB_HijackFrame[client] = false;
+			gA_PlayerFrames[client].Resize(gI_PlayerFrames[client] + 1);
+
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[0], 0);
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[1], 1);
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecCurrentPosition[2], 2);
+
+			if(!gB_HijackFrame[client])
+			{
+				float vecEyes[3];
+				GetClientEyeAngles(client, vecEyes);
+
+				gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecEyes[0], 3);
+				gA_PlayerFrames[client].Set(gI_PlayerFrames[client], vecEyes[1], 4);
+			}
+
+			else
+			{
+				gA_PlayerFrames[client].Set(gI_PlayerFrames[client], gF_HijackedAngles[client][0], 3);
+				gA_PlayerFrames[client].Set(gI_PlayerFrames[client], gF_HijackedAngles[client][1], 4);
+
+				gB_HijackFrame[client] = false;
+			}
+
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], buttons, 5);
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], GetEntityFlags(client), 6);
+			gA_PlayerFrames[client].Set(gI_PlayerFrames[client], GetEntityMoveType(client), 7);
+
+			gI_PlayerFrames[client]++;
 		}
-
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], buttons, 5);
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], GetEntityFlags(client), 6);
-		gA_PlayerFrames[client].Set(gI_PlayerFrames[client], GetEntityMoveType(client), 7);
-
-		gI_PlayerFrames[client]++;
 	}
 
 	return Plugin_Continue;
@@ -2525,4 +2536,9 @@ bool File_Copy(const char[] source, const char[] destination)
 	delete file_destination;
 
 	return true;
+}
+
+stock float GetTimeScale(int client)
+{
+	return (1.0/gI_Modulus[client]);
 }
