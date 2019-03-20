@@ -47,7 +47,7 @@
 #pragma semicolon 1
 
 // uncomment when done
-// #define DEBUG
+#define DEBUG
 
 char gS_MySQLPrefix[32];
 Database gH_SQL = null;	
