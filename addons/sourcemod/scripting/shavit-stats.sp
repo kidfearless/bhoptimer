@@ -642,11 +642,11 @@ public void ShowMapsCallback(Database db, DBResultSet results, const char[] erro
 
 	while(results.FetchRow())
 	{
-		char sMap[192];
-		results.FetchString(0, sMap, 192);
+		char sMap[PLATFORM_MAX_PATH];
+		results.FetchString(0, sMap, PLATFORM_MAX_PATH);
 
-		char sRecordID[16];
-		char sDisplay[256];
+		char sRecordID[PLATFORM_MAX_PATH];
+		char sDisplay[PLATFORM_MAX_PATH];
 
 		if(gI_MapType[client] == MAPSDONE)
 		{
@@ -670,13 +670,14 @@ public void ShowMapsCallback(Database db, DBResultSet results, const char[] erro
 			}
 
 			int iRecordID = results.FetchInt(3);
-			IntToString(iRecordID, sRecordID, 16);
+			IntToString(iRecordID, sRecordID, PLATFORM_MAX_PATH);
 		}
 
 		else
 		{
-			strcopy(sDisplay, 192, sMap);
-			strcopy(sRecordID, 16, "nope");
+			FormatEx(sDisplay, PLATFORM_MAX_PATH, "%s (T%i)", sMap, Shavit_GetMapTier(sMap));
+			strcopy(sRecordID, PLATFORM_MAX_PATH, sMap);
+			// strcopy(sRecordID, PLATFORM_MAX_PATH, "nope");
 		}
 
 		menu.AddItem(sRecordID, sDisplay);
@@ -690,17 +691,23 @@ public void ShowMapsCallback(Database db, DBResultSet results, const char[] erro
 	}
 
 	menu.ExitBackButton = true;
-	menu.Display(client, 60);
+	menu.Display(client, MENU_TIME_FOREVER);
 }
 
 public int MenuHandler_ShowMaps(Menu menu, MenuAction action, int param1, int param2)
 {
 	if(action == MenuAction_Select)
 	{
-		char sInfo[16];
-		menu.GetItem(param2, sInfo, 16);
+		char sInfo[PLATFORM_MAX_PATH];
+		menu.GetItem(param2, sInfo, PLATFORM_MAX_PATH);
 
-		if(StrEqual(sInfo, "nope"))
+		if(StringToInt(sInfo) == 0)
+		{
+			FakeClientCommand(param1, "sm_nominate %s", sInfo);
+
+			return 0;
+		}
+		else if(StrEqual(sInfo, "nope"))
 		{
 			OpenStatsMenu(param1, gS_TargetAuth[param1]);
 
