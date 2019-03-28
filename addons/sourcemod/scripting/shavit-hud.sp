@@ -1573,62 +1573,76 @@ void UpdateTopLeftHUD(int client, bool wait)
 		}
 
 		float fWRTime = Shavit_GetWorldRecord(style, track);
-
+		int stageCount = Shavit_GetTotalStageCount();
+		char sWRTime[16];
+		char sWRName[MAX_NAME_LENGTH];
+		char sTopLeft[128];
+		
 		if(fWRTime != 0.0)
 		{
-			char sWRTime[16];
 			FormatSeconds(fWRTime, sWRTime, 16);
-
-			char sWRName[MAX_NAME_LENGTH];
 			Shavit_GetWRName(style, sWRName, MAX_NAME_LENGTH, track);
 
-			char sTopLeft[128];
-			FormatEx(sTopLeft, 128, "WR: %s (%s)", sWRTime, sWRName);
-
-			float fTargetPB = Shavit_GetClientPB(target, style, track);
-			char sTargetPB[64];
-			FormatSeconds(fTargetPB, sTargetPB, 64);
-			Format(sTargetPB, 64, "%T: %s", "HudBestText", client, sTargetPB);
-
-			float fSelfPB = Shavit_GetClientPB(client, style, track);
-			char sSelfPB[64];
-			FormatSeconds(fSelfPB, sSelfPB, 64);
-			Format(sSelfPB, 64, "%T: %s", "HudBestText", client, sSelfPB);
-
-			if((gI_HUD2Settings[client] & HUD2_SPLITPB) == 0 && target != client)
-			{
-				if(fTargetPB != 0.0)
-				{
-					Format(sTopLeft, 128, "%s\n%s (%N)", sTopLeft, sTargetPB, target);
-				}
-
-				if(fSelfPB != 0.0)
-				{
-					Format(sTopLeft, 128, "%s\n%s (%N)", sTopLeft, sSelfPB, client);
-				}
-			}
-
-			else if(fSelfPB != 0.0)
-			{
-				Format(sTopLeft, 128, "%s\n%s (#%d)", sTopLeft, sSelfPB, Shavit_GetRankForTime(style, fSelfPB, track));
-			}
-
-			Action result = Plugin_Continue;
-			Call_StartForward(gH_Forwards_OnTopLeftHUD);
-			Call_PushCell(client);
-			Call_PushCell(target);
-			Call_PushStringEx(sTopLeft, 128, SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
-			Call_PushCell(128);
-			Call_Finish(result);
-			
-			if(result != Plugin_Continue && result != Plugin_Changed)
-			{
-				return;
-			}
-
-			SetHudTextParams(0.01, 0.01, 2.5, 255, 255, 255, 255, 0, 0.0, 0.0, 0.0);
-			ShowSyncHudText(client, gH_HUD, "%s", sTopLeft);
+			FormatEx(sTopLeft, 128, "WR: %s (%s)\n", sWRTime, sWRName);
 		}
+
+		float fTargetPB = Shavit_GetClientPB(target, style, track);
+		char sTargetPB[64];
+		FormatSeconds(fTargetPB, sTargetPB, 64);
+		Format(sTargetPB, 64, "%T: %s", "HudBestText", client, sTargetPB);
+
+		float fSelfPB = Shavit_GetClientPB(client, style, track);
+		char sSelfPB[64];
+		FormatSeconds(fSelfPB, sSelfPB, 64);
+		Format(sSelfPB, 64, "%T: %s", "HudBestText", client, sSelfPB);
+
+		if((gI_HUD2Settings[client] & HUD2_SPLITPB) == 0 && target != client)
+		{
+			if(fTargetPB != 0.0)
+			{
+				Format(sTopLeft, 128, "%s%s (%N)\n", sTopLeft, sTargetPB, target);
+			}
+
+			if(fSelfPB != 0.0)
+			{
+				Format(sTopLeft, 128, "%s%s (%N)\n", sTopLeft, sSelfPB, client);
+			}
+		}
+
+		else if(fSelfPB != 0.0)
+		{
+			Format(sTopLeft, 128, "%s%s (#%d)\n", sTopLeft, sSelfPB, Shavit_GetRankForTime(style, fSelfPB, track));
+		}
+
+		
+		
+		char sStage[32];
+		if(stageCount > 1)
+		{
+			FormatEx(sStage, 32, "Stage: %i/%i", Shavit_GetClientStage(client), stageCount-1);
+		}
+		else
+		{
+			strcopy(sStage, 32, "Stage: Linear");
+		}
+
+		Format(sTopLeft, 128, "%s%s", sTopLeft, sStage);
+
+		Action result = Plugin_Continue;
+		Call_StartForward(gH_Forwards_OnTopLeftHUD);
+		Call_PushCell(client);
+		Call_PushCell(target);
+		Call_PushStringEx(sTopLeft, 128, SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
+		Call_PushCell(128);
+		Call_Finish(result);
+		
+		if(result != Plugin_Continue && result != Plugin_Changed)
+		{
+			return;
+		}
+
+		SetHudTextParams(0.01, 0.01, 2.5, 255, 255, 255, 255, 0, 0.0, 0.0, 0.0);
+		ShowSyncHudText(client, gH_HUD, "%s", sTopLeft);
 	}
 }
 
