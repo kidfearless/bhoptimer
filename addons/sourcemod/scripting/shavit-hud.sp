@@ -1209,14 +1209,11 @@ int AddHUDToBuffer_CSGO(int client, huddata_t data, char[] buffer, int maxlen)
 		{
 			char sTrack[32];
 			GetTrackName(client, data.iTrack, sTrack, 32);
-<<<<<<< HEAD
 			Format(sTrack, 32, "%s", sTrack);
 	
 			AddTabsToBuffer(sTrack, 32, 3, false);
 			
 			AddTabsToBuffer(sTrack, 32, 1, true);
-=======
->>>>>>> master
 
 			bAddNewLine = true;
 			StrCat(buffer, maxlen, sTrack);

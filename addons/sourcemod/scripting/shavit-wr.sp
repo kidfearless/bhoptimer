@@ -1570,8 +1570,9 @@ public Action Command_RecentRecords(int client, int args)
 
 	FormatEx(sQuery, 512,
 			"SELECT a.id, a.map, u.name, a.time, a.style, a.track FROM %splayertimes a " ...
-			"JOIN (SELECT MIN(time) time, map, style, track FROM %splayertimes GROUP by map, style, track ORDER BY date DESC) b " ...
+			"JOIN (SELECT MIN(time) time, map, style, track FROM %splayertimes GROUP by map, style, track) b " ...
 			"JOIN %susers u ON a.time = b.time AND a.auth = u.auth AND a.map = b.map AND a.style = b.style AND a.track = b.track " ...
+			"ORDER BY a.date DESC " ...
 			"LIMIT 100;", gS_MySQLPrefix, gS_MySQLPrefix, gS_MySQLPrefix);
 
 	gH_SQL.Query(SQL_RR_Callback, sQuery, GetClientSerial(client), DBPrio_Low);
@@ -1743,7 +1744,7 @@ public void SQL_SubMenu_Callback(Database db, DBResultSet results, const char[] 
 		int jumps = results.FetchInt(2);
 		float perfs = results.FetchFloat(9);
 
-		if(gA_StyleSettings[style].bAutobhop && perfs > 0.0)
+		if(gA_StyleSettings[style].bAutobhop)
 		{
 			FormatEx(sDisplay, 128, "%T: %d", "WRJumps", client, jumps);
 		}
@@ -1999,24 +2000,24 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 	// 0 - no query
 	// 1 - insert
 	// 2 - update
-	int overwrite = 0;
+	int iOverwrite = 0;
 
 	if(gA_StyleSettings[style].bUnranked || Shavit_IsPracticeMode(client))
 	{
-		overwrite = 0; // ugly way of not writing to database
+		iOverwrite = 0; // ugly way of not writing to database
 	}
 
 	else if(gF_PlayerRecord[client][style][track] == 0.0)
 	{
-		overwrite = 1;
+		iOverwrite = 1;
 	}
 
-	else if(time <= gF_PlayerRecord[client][style][track])
+	else if(time < gF_PlayerRecord[client][style][track])
 	{
-		overwrite = 2;
+		iOverwrite = 2;
 	}
 
-	if(overwrite > 0 && (time < gF_WRTime[style][track] || gF_WRTime[style][track] == 0.0)) // WR?
+	if(iOverwrite > 0 && (time < gF_WRTime[style][track] || gF_WRTime[style][track] == 0.0)) // WR?
 	{
 		float oldwr = gF_WRTime[style][track];
 		gF_WRTime[style][track] = time;
@@ -2069,14 +2070,14 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 	char sSync[32]; // 32 because colors
 	FormatEx(sSync, 32, (sync != -1.0)? " @ %s%.02f%%":"", gS_ChatStrings.sVariable, sync);
 
-	if(overwrite > 0)
+	if(iOverwrite > 0)
 	{
 		char sAuthID[32];
 		GetClientAuthId(client, AuthId_Steam3, sAuthID, 32);
 
 		char sQuery[512];
 
-		if(overwrite == 1) // insert
+		if(iOverwrite == 1) // insert
 		{
 			Shavit_PrintToChatAll("%s[%s]%s %T", gS_ChatStrings.sVariable, sTrack, gS_ChatStrings.sText, "FirstCompletion", LANG_SERVER, gS_ChatStrings.sVariable2, client, gS_ChatStrings.sText, gS_ChatStrings.sStyle, gS_StyleStrings[style].sStyleName, gS_ChatStrings.sText, gS_ChatStrings.sVariable2, sTime, gS_ChatStrings.sText, gS_ChatStrings.sVariable, iRank, gS_ChatStrings.sText, jumps, strafes, sSync, gS_ChatStrings.sText);
 
@@ -2105,7 +2106,7 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 		Call_PushCell(strafes);
 		Call_PushCell(sync);
 		Call_PushCell(iRank);
-		Call_PushCell(overwrite);
+		Call_PushCell(iOverwrite);
 		Call_PushCell(track);
 		Call_PushCell(oldtime);
 		Call_PushCell(perfs);
@@ -2114,7 +2115,7 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 		gF_PlayerRecord[client][style][track] = time;
 	}
 
-	else if(overwrite == 0 && !gA_StyleSettings[style].bUnranked)
+	else if(iOverwrite == 0 && !gA_StyleSettings[style].bUnranked)
 	{
 		Shavit_PrintToChat(client, "%s[%s]%s %T", gS_ChatStrings.sVariable, sTrack, gS_ChatStrings.sText, "WorseTime", client, gS_ChatStrings.sStyle, gS_StyleStrings[style].sStyleName, gS_ChatStrings.sText, gS_ChatStrings.sVariable2, sTime, gS_ChatStrings.sText, jumps, strafes, sSync, gS_ChatStrings.sText, sDifference);
 	}
