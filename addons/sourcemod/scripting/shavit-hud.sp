@@ -42,6 +42,7 @@
 #define HUD2_SPLITPB			(1 << 8)
 #define HUD2_MAPTIER			(1 << 9)
 
+
 #define HUD_DEFAULT				(HUD_MASTER|HUD_CENTER|HUD_ZONEHUD|HUD_OBSERVE|HUD_TOPLEFT|HUD_SYNC|HUD_TIMELEFT|HUD_2DVEL|HUD_SPECTATORS)
 #define HUD_DEFAULT2			0
 
@@ -637,6 +638,14 @@ Action ShowHUDMenu(int client, int item)
 	FormatEx(sHudItem, 64, "%T", "HudPracticeModeAlert", client);
 	menu.AddItem(sInfo, sHudItem);
 
+	FormatEx(sInfo, 16, "!%d", HUD_PB);
+	FormatEx(sHudItem, 64, "PB");
+	menu.AddItem(sInfo, sHudItem);
+
+	FormatEx(sInfo, 16, "!%d", HUD_WR);
+	FormatEx(sHudItem, 64, "WR");
+	menu.AddItem(sInfo, sHudItem);
+
 	// HUD2 - disables selected elements
 	FormatEx(sInfo, 16, "@%d", HUD2_TIME);
 	FormatEx(sHudItem, 64, "%T", "HudTimeText", client);
@@ -881,10 +890,12 @@ void TriggerHUDUpdate(int client, bool keysonly = false) // keysonly because CS:
 		UpdateCenterKeys(client);
 	}
 
-	else if(((gI_HUDSettings[client] & HUD_KEYOVERLAY) > 0 || (gI_HUDSettings[client] & HUD_SPECTATORS) > 0) && (!gB_Zones || !Shavit_IsClientCreatingZone(client)) && (GetClientMenu(client, null) == MenuSource_None || GetClientMenu(client, null) == MenuSource_RawPanel))
+	else if(((gI_HUDSettings[client] & HUD_KEYOVERLAY) > 0 || (gI_HUDSettings[client] & (HUD_PB | HUD_WR)) > 0 || (gI_HUDSettings[client] & HUD_SPECTATORS) > 0) && (!gB_Zones || !Shavit_IsClientCreatingZone(client)) && (GetClientMenu(client, null) == MenuSource_None || GetClientMenu(client, null) == MenuSource_RawPanel))
 	{
 		bool bShouldDraw = false;
 		Panel pHUD = new Panel();
+
+		UpdateWROverlay(client, pHUD, bShouldDraw);
 
 		UpdateKeyOverlay(client, pHUD, bShouldDraw);
 		pHUD.DrawItem("", ITEMDRAW_RAWLINE);
@@ -1406,6 +1417,65 @@ void UpdateMainHUD(int client)
 	{
 		PrintHintText(client, "%s", sBuffer);
 	}
+}
+
+void UpdateWROverlay(int client, Panel panel, bool &draw)
+{
+	int target = GetHUDTarget(client);
+
+	int track = 0;
+	int style = 0;
+
+	if(!IsFakeClient(target))
+	{
+		style = Shavit_GetBhopStyle(target);
+		track = Shavit_GetClientTrack(target);
+	}
+
+	else
+	{
+		style = Shavit_GetReplayBotStyle(target);
+		track = Shavit_GetReplayBotTrack(target);
+	}
+
+	if(!(0 <= style < gI_Styles) || !(0 <= track <= TRACKS_SIZE))
+	{
+		return;
+	}
+
+	float fWRTime = Shavit_GetWorldRecord(style, track);
+	char sWRTime[16];
+	
+	FormatSeconds(fWRTime, sWRTime, 16, false);
+
+
+	float fTargetPB = Shavit_GetClientPB(target, style, track);
+	char sTargetPB[64];
+
+	FormatSeconds(fTargetPB, sTargetPB, 64, false);
+
+
+	char sPanelLine[128];
+
+	if((gI_HUDSettings[client] & HUD_PB) > 0 && fTargetPB != 0.0)
+	{
+		FormatEx(sPanelLine, 64, "PB: %s\n", sTargetPB);
+		draw = true;
+	}
+	if((gI_HUDSettings[client] & HUD_WR) > 0 && fWRTime != 0.0)
+	{
+		Format(sPanelLine, 64, "%sWR: %s\n", sPanelLine, sWRTime);
+		draw = true;
+	}
+
+	if(!draw)
+	{
+		return;
+	}
+
+	Format(sPanelLine, 64, "%s \n", sPanelLine);
+
+	panel.DrawItem(sPanelLine, ITEMDRAW_RAWLINE);
 }
 
 void UpdateKeyOverlay(int client, Panel panel, bool &draw)

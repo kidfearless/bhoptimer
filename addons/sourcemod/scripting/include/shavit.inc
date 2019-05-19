@@ -43,6 +43,8 @@
 #define HUD_2DVEL				(1 << 10) // shows 2d velocity
 #define HUD_NOSOUNDS			(1 << 11) // disables sounds on personal best, world record etc
 #define HUD_NOPRACALERT			(1 << 12) // hides practice mode chat alert
+#define HUD_PB					(1 << 13)
+#define HUD_WR					(1 << 14)
 
 #include <shavit_extra>
 
