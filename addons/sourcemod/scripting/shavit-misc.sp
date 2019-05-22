@@ -881,7 +881,7 @@ void UpdateScoreboard(int client)
 
 	float fPB = Shavit_GetClientPB(client, 0, Track_Main);
 
-	int iScore = (fPB != 0.0 && fPB < 2000)? -RoundToFloor(fPB):-2000;
+	int iScore = (fPB != 0.0 && fPB < 2000)? RoundToFloor(fPB):0;
 
 	if(gEV_Type == Engine_CSGO)
 	{
@@ -897,6 +897,8 @@ void UpdateScoreboard(int client)
 	{
 		SetEntProp(client, Prop_Data, "m_iDeaths", Shavit_GetRank(client));
 	}
+
+	SetEntProp(client, Prop_Data, "m_iFrags", Shavit_GetRankForTime(0, fPB, Track_Main));
 }
 
 void UpdateClanTag(int client)
