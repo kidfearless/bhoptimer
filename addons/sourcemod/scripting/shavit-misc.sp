@@ -898,7 +898,12 @@ void UpdateScoreboard(int client)
 		SetEntProp(client, Prop_Data, "m_iDeaths", Shavit_GetRank(client));
 	}
 
-	SetEntProp(client, Prop_Data, "m_iFrags", Shavit_GetRankForTime(0, fPB, Track_Main));
+	int iRank = Shavit_GetRankForTime(0, fPB, Track_Main);
+	if(fPB == 0.0)
+	{
+		iRank = 0;
+	}
+	SetEntProp(client, Prop_Data, "m_iFrags", iRank);
 }
 
 void UpdateClanTag(int client)
