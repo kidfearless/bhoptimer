@@ -947,7 +947,7 @@ public void Shavit_OnEnterZone(int client, int type, int track, int id, int enti
 	}
 }
 
-
+/*
 int AddHUDToBuffer_Source2013(int client, huddata_t data, char[] buffer, int maxlen)
 {
 	int iLines = 0;
