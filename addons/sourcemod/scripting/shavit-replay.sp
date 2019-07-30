@@ -180,6 +180,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 {
 	CreateNative("Shavit_DeleteReplay", Native_DeleteReplay);
 	CreateNative("Shavit_GetReplayBotCurrentFrame", Native_GetReplayBotIndex);
+	CreateNative("Shavit_GetClientFrameCount", Native_GetClientFrameCount);
 	CreateNative("Shavit_GetReplayBotFirstFrame", Native_GetReplayBotFirstFrame);
 	CreateNative("Shavit_GetReplayBotIndex", Native_GetReplayBotIndex);
 	CreateNative("Shavit_GetReplayBotStyle", Native_GetReplayBotStyle);
@@ -591,6 +592,11 @@ public int Native_GetReplayData(Handle handler, int numParams)
 public int Native_GetReplayFrameCount(Handle handler, int numParams)
 {
 	return gA_FrameCache[GetNativeCell(1)][GetNativeCell(2)].iFrameCount;
+}
+
+public int Native_GetClientFrameCount(Handle handler, int numParams)
+{
+	return gA_PlayerFrames[GetNativeCell(1)].Length;
 }
 
 public int Native_GetReplayLength(Handle handler, int numParams)
