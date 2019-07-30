@@ -79,6 +79,7 @@ Handle gH_Forwards_OnEnd = null;
 Handle gH_Forwards_OnPause = null;
 Handle gH_Forwards_OnResume = null;
 Handle gH_Forwards_OnStyleChanged = null;
+Handle gH_Forwards_OnTrackChanged = null;
 Handle gH_Forwards_OnStyleConfigLoaded = null;
 Handle gH_Forwards_OnDatabaseLoaded = null;
 Handle gH_Forwards_OnChatConfigLoaded = null;
@@ -231,6 +232,7 @@ public void OnPluginStart()
 	gH_Forwards_OnPause = CreateGlobalForward("Shavit_OnPause", ET_Event, Param_Cell, Param_Cell);
 	gH_Forwards_OnResume = CreateGlobalForward("Shavit_OnResume", ET_Event, Param_Cell, Param_Cell);
 	gH_Forwards_OnStyleChanged = CreateGlobalForward("Shavit_OnStyleChanged", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
+	gH_Forwards_OnTrackChanged = CreateGlobalForward("Shavit_OnTrackChanged", ET_Event, Param_Cell, Param_Cell, Param_Cell);
 	gH_Forwards_OnStyleConfigLoaded = CreateGlobalForward("Shavit_OnStyleConfigLoaded", ET_Event, Param_Cell);
 	gH_Forwards_OnDatabaseLoaded = CreateGlobalForward("Shavit_OnDatabaseLoaded", ET_Event);
 	gH_Forwards_OnChatConfigLoaded = CreateGlobalForward("Shavit_OnChatConfigLoaded", ET_Event);
@@ -1039,6 +1041,15 @@ void CallOnStyleChanged(int client, int oldstyle, int newstyle, bool manual)
 	UpdateStyleSettings(client);
 }
 
+void CallOnTrackChanged(int client, int oldtrack, int newtrack)
+{
+	Call_StartForward(gH_Forwards_OnTrackChanged);
+	Call_PushCell(client);
+	Call_PushCell(oldtrack);
+	Call_PushCell(newtrack);	
+	Call_Finish();
+}
+
 void ChangeClientStyle(int client, int style, bool manual)
 {
 	if(!IsValidClient(client))
@@ -1654,6 +1665,11 @@ public int Native_LoadSnapshot(Handle handler, int numParams)
 	timer_snapshot_t snapshot;
 	GetNativeArray(2, snapshot, sizeof(timer_snapshot_t));
 
+	if(gA_Timers[client].iTrack != snapshot.iTimerTrack)
+	{
+		CallOnTrackChanged(client, gA_Timers[client].iTrack, snapshot.iTimerTrack);
+	}
+
 	gA_Timers[client].iTrack = snapshot.iTimerTrack;
 
 	if(gA_Timers[client].iStyle != snapshot.bsStyle && Shavit_HasStyleAccess(client, snapshot.bsStyle))
@@ -1738,6 +1754,10 @@ void StartTimer(int client, int track)
 			gA_Timers[client].iJumps = 0;
 			gA_Timers[client].iTotalMeasures = 0;
 			gA_Timers[client].iGoodGains = 0;
+			if(gA_Timers[client].iTrack != track)
+			{
+				CallOnTrackChanged(client, gA_Timers[client].iTrack, track);
+			}
 			gA_Timers[client].iTrack = track;
 			gA_Timers[client].bEnabled = true;
 			gA_Timers[client].iSHSWCombination = -1;
