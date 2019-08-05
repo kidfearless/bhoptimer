@@ -1335,6 +1335,16 @@ void UpdateReplayInfo(int client, int style, float time, int track)
 	bool central = (gA_CentralCache.iClient == client);
 	bool idle = (central && gA_CentralCache.iReplayStatus == Replay_Idle);
 
+	if(idle)
+	{
+		track = Track_Main;
+	}
+
+	if(time <= 0.0)
+	{
+		time = GetReplayLength(style, track);
+	}
+
 	if(gEV_Type != Engine_TF2)
 	{
 		char sTag[MAX_NAME_LENGTH];
