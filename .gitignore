@@ -10,3 +10,25 @@
 .vscode/tasks.json
 
 \.vscode/settings\.json
+
+addons/sourcemod/scripting/include/math/math\.inc
+
+addons/sourcemod/scripting/helix_is_a_perv\.sp
+
+addons/sourcemod/scripting/include/math/math_array_statistics\.inc
+
+addons/sourcemod/scripting/include/math/math_constants\.inc
+
+addons/sourcemod/scripting/include/math/math_definitions\.inc
+
+addons/sourcemod/scripting/include/math/math_trig\.inc
+
+addons/sourcemod/scripting/include/mathnet\.inc
+
+addons/sourcemod/scripting/include/precache_manager\.inc
+
+addons/sourcemod/scripting/kid-botpath-h\.sp
+
+addons/sourcemod/scripting/kid-botpath\.sp
+
+addons/sourcemod/scripting/replay_reader\.sp
