@@ -719,6 +719,13 @@ forward void Shavit_OnReplayStart(int client);
 forward void Shavit_OnReplayEnd(int client);
 
 /**
+ * Called when all replays files have been loaded.
+ *
+ * @noreturn
+ */
+forward void Shavit_OnReplaysLoaded();
+
+/**
  * Called when top left HUD updates.
  *
  * @param client					Client index that recieves the hud.

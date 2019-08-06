@@ -122,6 +122,7 @@ bool gB_Late = false;
 // forwards
 Handle gH_OnReplayStart = null;
 Handle gH_OnReplayEnd = null;
+Handle gH_OnReplaysLoaded = null;
 
 // server specific
 float gF_Tickrate = 0.0;
@@ -223,6 +224,7 @@ public void OnPluginStart()
 	// forwards
 	gH_OnReplayStart = CreateGlobalForward("Shavit_OnReplayStart", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	gH_OnReplayEnd = CreateGlobalForward("Shavit_OnReplayEnd", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
+	gH_OnReplaysLoaded = CreateGlobalForward("Shavit_OnReplays", ET_Event);
 
 	// game specific
 	gEV_Type = GetEngineVersion();
@@ -891,6 +893,9 @@ public void OnMapStart()
 			}
 		}
 	}
+
+	Call_StartForward(gH_OnReplaysLoaded);
+	Call_Finish();
 
 	if(gCV_CentralBot.BoolValue)
 	{
