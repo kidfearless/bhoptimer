@@ -1194,6 +1194,15 @@ native int Shavit_GetReplayBotCurrentFrame(int style);
 native int Shavit_GetReplayFrameCount(int style, int track);
 
 /**
+ * Retrieves the replay data for the given style and track.
+ *
+ * @param style						Style.
+ * @param track						Track.
+ * @return							ArrayList with proper replay data, or null if there is no recorded data.
+ */
+native ArrayList Shavit_GetReplayFrames(int style, int track);
+
+/**
  * Retrieves a clients's frame count.
  *
  * @param client						Client Index.
