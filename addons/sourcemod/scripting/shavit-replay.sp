@@ -101,7 +101,9 @@ EngineVersion gEV_Type = Engine_Unknown;
 // cache
 char gS_ReplayFolder[PLATFORM_MAX_PATH];
 
-int gI_ReplayTick[STYLE_LIMIT];
+bool gB_ReplayBackwards[STYLE_LIMIT];
+float gF_ReplayTimeScale[STYLE_LIMIT] = {1.0, ...};
+float gF_ReplayTick[STYLE_LIMIT];
 int gI_ReplayBotClient[STYLE_LIMIT];
 ArrayList gA_Frames[STYLE_LIMIT][TRACKS_SIZE];
 float gF_StartTick[STYLE_LIMIT];
@@ -168,6 +170,8 @@ TopMenuObject gH_TimerCommands = INVALID_TOPMENUOBJECT;
 Database gH_SQL = null;
 char gS_MySQLPrefix[32];
 
+Menu gM_Timescale;
+
 public Plugin myinfo =
 {
 	name = "[shavit] Replay Bot",
@@ -224,7 +228,7 @@ public void OnPluginStart()
 	// forwards
 	gH_OnReplayStart = CreateGlobalForward("Shavit_OnReplayStart", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	gH_OnReplayEnd = CreateGlobalForward("Shavit_OnReplayEnd", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
-	gH_OnReplaysLoaded = CreateGlobalForward("Shavit_OnReplays", ET_Event);
+	gH_OnReplaysLoaded = CreateGlobalForward("Shavit_OnReplaysLoaded", ET_Event);
 
 	// game specific
 	gEV_Type = GetEngineVersion();
@@ -410,7 +414,9 @@ void UnloadReplay(int style, int track)
 	gA_FrameCache[style][track].fTime = 0.0;
 	gA_FrameCache[style][track].bNewFormat = true;
 	strcopy(gA_FrameCache[style][track].sReplayName, MAX_NAME_LENGTH, "invalid");
-	gI_ReplayTick[style] = -1;
+	gF_ReplayTick[style] = -1.0;
+	gF_ReplayTimeScale[style] = 1.0;
+	gB_ReplayBackwards[style] = false;
 
 	if(gI_ReplayBotClient[style] != 0)
 	{
@@ -452,7 +458,7 @@ public int Native_GetReplayBotFirstFrame(Handle handler, int numParams)
 
 public int Native_GetReplayBotCurrentFrame(Handle handler, int numParams)
 {
-	return gI_ReplayTick[GetNativeCell(1)];
+	return RoundFloat(gF_ReplayTick[GetNativeCell(1)]);
 }
 
 public int Native_GetReplayBotIndex(Handle handler, int numParams)
@@ -482,7 +488,9 @@ public int Native_ReloadReplay(Handle handler, int numParams)
 {
 	int style = GetNativeCell(1);
 
-	gI_ReplayTick[style] = -1;
+	gF_ReplayTick[style] = -1.0;
+	gF_ReplayTimeScale[style] = 1.0;
+	gB_ReplayBackwards[style] = false;
 	gF_StartTick[style] = -65535.0;
 	gRS_ReplayStatus[style] = Replay_Idle;
 
@@ -529,8 +537,10 @@ public int Native_ReloadReplay(Handle handler, int numParams)
 
 		if(loaded && restart)
 		{
-			gI_ReplayTick[style] = 0;
+			gF_ReplayTick[style] = 0.0;
 			gRS_ReplayStatus[style] = Replay_Start;
+			gF_ReplayTimeScale[style] = 1.0;
+			gB_ReplayBackwards[style] = false;
 
 			delete gH_ReplayTimers[style];
 			gH_ReplayTimers[style] = CreateTimer((gCV_ReplayDelay.FloatValue / 2.0), Timer_StartReplay, style, TIMER_FLAG_NO_MAPCHANGE);
@@ -651,7 +661,7 @@ public int Native_GetReplayTime(Handle handler, int numParams)
 		return view_as<int>(GetReplayLength(Track_Main, track));
 	}
 
-	return view_as<int>(float(gI_ReplayTick[style]) / gF_Tickrate * gA_StyleSettings[style].fTimescale);
+	return view_as<int>(gF_ReplayTick[style] / gF_Tickrate * gA_StyleSettings[style].fTimescale);
 }
 
 public int Native_HijackAngles(Handle handler, int numParams)
@@ -847,7 +857,9 @@ public void OnMapStart()
 
 	for(int i = 0; i < gI_Styles; i++)
 	{
-		gI_ReplayTick[i] = -1;
+		gF_ReplayTick[i] = -1.0;
+		gF_ReplayTimeScale[i] = 1.0;
+		gB_ReplayBackwards[i] = false;
 		gF_StartTick[i] = -65535.0;
 		gRS_ReplayStatus[i] = Replay_Idle;
 
@@ -885,7 +897,7 @@ public void OnMapStart()
 
 			if(loaded)
 			{
-				gI_ReplayTick[i] = 0;
+				gF_ReplayTick[i] = 0.0;
 				gRS_ReplayStatus[i] = Replay_Start;
 
 				delete gH_ReplayTimers[i];
@@ -1621,7 +1633,9 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 			}
 
 			gRS_ReplayStatus[style] = Replay_Running;
-			gI_ReplayTick[style] = 0;
+			gF_ReplayTick[style] = 0.0;
+			gF_ReplayTimeScale[style] = 1.0;
+			gB_ReplayBackwards[style] = false;
 
 			float vecPosition[3];
 			vecPosition[0] = gA_Frames[style][track].Get(0, 0);
@@ -1694,7 +1708,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			return Plugin_Changed;
 		}
 
-		if(gI_ReplayTick[style] != -1 && gA_FrameCache[style][track].iFrameCount >= 1)
+		if(gF_ReplayTick[style] != -1.0 && gA_FrameCache[style][track].iFrameCount >= 1)
 		{
 			float vecPosition[3];
 			float vecAngles[3];
@@ -1728,9 +1742,17 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				return Plugin_Changed;
 			}
 
-			if(++gI_ReplayTick[style] >= gA_FrameCache[style][track].iFrameCount - 1)
+			gF_ReplayTick[style] += gF_ReplayTimeScale[style];
+			int tick = RoundFloat(gF_ReplayTick[style]);
+			if(tick < 0)
 			{
-				gI_ReplayTick[style] = 0;
+				tick = 0;
+			}
+			if(tick >= gA_FrameCache[style][track].iFrameCount - 1)
+			{
+				gF_ReplayTick[style] = 0.0;
+				gF_ReplayTimeScale[style] = 1.0;	
+				gB_ReplayBackwards[style] = false;	
 				gRS_ReplayStatus[style] = gA_CentralCache.iReplayStatus = Replay_End;
 
 				delete gH_ReplayTimers[style];
@@ -1740,19 +1762,19 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				return Plugin_Changed;
 			}
 
-			if(gI_ReplayTick[style] == 1)
+			if(tick == 1.0)
 			{
 				gF_StartTick[style] = GetEngineTime();
 			}
 
-			vecPosition[0] = gA_Frames[style][track].Get(gI_ReplayTick[style], 0);
-			vecPosition[1] = gA_Frames[style][track].Get(gI_ReplayTick[style], 1);
-			vecPosition[2] = gA_Frames[style][track].Get(gI_ReplayTick[style], 2);
+			vecPosition[0] = gA_Frames[style][track].Get(tick, 0);
+			vecPosition[1] = gA_Frames[style][track].Get(tick, 1);
+			vecPosition[2] = gA_Frames[style][track].Get(tick, 2);
 
-			vecAngles[0] = gA_Frames[style][track].Get(gI_ReplayTick[style], 3);
-			vecAngles[1] = gA_Frames[style][track].Get(gI_ReplayTick[style], 4);
+			vecAngles[0] = gA_Frames[style][track].Get(tick, 3);
+			vecAngles[1] = gA_Frames[style][track].Get(tick, 4);
 
-			buttons = gA_Frames[style][track].Get(gI_ReplayTick[style], 5);
+			buttons = gA_Frames[style][track].Get(tick, 5);
 
 			if((gCV_BotShooting.IntValue & iBotShooting_Attack1) == 0)
 			{
@@ -1774,7 +1796,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 			if(gA_FrameCache[style][track].iReplayVersion >= 0x02)
 			{
-				int iReplayFlags = gA_Frames[style][track].Get(gI_ReplayTick[style], 6);
+				int iReplayFlags = gA_Frames[style][track].Get(tick, 6);
 				int iEntityFlags = GetEntityFlags(client);
 
 				ApplyFlags(iEntityFlags, iReplayFlags, FL_ONGROUND);
@@ -1784,7 +1806,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 
 				SetEntityFlags(client, iEntityFlags);
 				
-				MoveType movetype = gA_Frames[style][track].Get(gI_ReplayTick[style], 7);
+				MoveType movetype = gA_Frames[style][track].Get(tick, 7);
 
 				if(movetype == MOVETYPE_LADDER)
 				{
@@ -1803,7 +1825,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			MakeVectorFromPoints(vecCurrentPosition, vecPosition, vecVelocity);
 			ScaleVector(vecVelocity, gF_Tickrate);
 
-			if(gI_ReplayTick[style] > 1 &&
+			if(tick > 1 &&
 				// replay is going above 50k speed, just teleport at this point
 				(GetVectorLength(vecVelocity) > 50000.0 ||
 				// bot is on ground.. if the distance between the previous position is much bigger (1.5x) than the expected according
@@ -1897,7 +1919,9 @@ public Action Timer_EndReplay(Handle Timer, any data)
 		return Plugin_Stop;
 	}
 
-	gI_ReplayTick[data] = 0;
+	gF_ReplayTick[data] = 0.0;
+	gF_ReplayTimeScale[data] = 1.0;
+	gB_ReplayBackwards[data] = false;
 
 	Call_StartForward(gH_OnReplayEnd);
 	Call_PushCell(gI_ReplayBotClient[data]);
@@ -2410,7 +2434,9 @@ public int MenuHandler_ReplaySubmenu(Menu menu, MenuAction action, int param1, i
 
 		else
 		{
-			gI_ReplayTick[style] = 0;
+			gF_ReplayTick[style] = 0.0;
+			gF_ReplayTimeScale[style] = 1.0;
+			gB_ReplayBackwards[style] = false;
 			gA_CentralCache.iStyle = style;
 			gA_CentralCache.iTrack = gI_Track[param1];
 			gA_CentralCache.iPlaybackSerial = GetClientSerial(param1);
@@ -2426,6 +2452,8 @@ public int MenuHandler_ReplaySubmenu(Menu menu, MenuAction action, int param1, i
 
 			delete gH_ReplayTimers[style];
 			gH_ReplayTimers[style] = CreateTimer((gCV_ReplayDelay.FloatValue / 2.0), Timer_StartReplay, style, TIMER_FLAG_NO_MAPCHANGE);
+
+			SendTimeScaleMenu(param1, gA_CentralCache.iStyle, gA_CentralCache.iTrack);
 		}
 	}
 
@@ -2437,6 +2465,132 @@ public int MenuHandler_ReplaySubmenu(Menu menu, MenuAction action, int param1, i
 	else if(action == MenuAction_End)
 	{
 		delete menu;
+	}
+
+	return 0;
+}
+
+void SendTimeScaleMenu(int client, int style, int track)
+{	
+	delete gM_Timescale;
+	gM_Timescale = new Menu(MenuHandler_ReplayTimeScaleMenu);
+
+	char info[16];
+	float fWRTime = GetReplayLength(style, track);
+	float time = GetReplayLength(gA_CentralCache.iStyle, gI_Track[client]);
+	char sTime[16];
+	FormatSeconds((time == -1.0)? fWRTime:time, sTime, 16);
+
+	char name[MAX_NAME_LENGTH];
+	GetReplayName(style, gA_CentralCache.iTrack, name, MAX_NAME_LENGTH);
+
+	gM_Timescale.SetTitle("%s/%s\nPlayer: %s\n Length: %s", gS_StyleStrings[style].sStyleName, gA_CentralCache.iTrack == Track_Main? "Main": "Bonus", name, sTime);
+
+	FormatEx(info, 16, "%i", style);
+
+	gM_Timescale.AddItem("stop", "Stop");
+	gM_Timescale.AddItem(info, "Pause");
+
+	char display[16];
+
+	FormatEx(display, 16, "%sForward", !gB_ReplayBackwards[style]? "-> ":"");
+	gM_Timescale.AddItem(info, display);
+
+	FormatEx(display, 16, "%sRewind", gB_ReplayBackwards[style]? "-> ":"");
+	gM_Timescale.AddItem(info, display);
+
+	FormatEx(display, 16, "Edit Speed %.2f", gF_ReplayTimeScale[style]);
+	gM_Timescale.AddItem("edit", display);
+
+	gM_Timescale.Display(client, MENU_TIME_FOREVER);
+}
+
+public int MenuHandler_ReplayTimeScaleMenu(Menu menu, MenuAction action, int param1, int param2)
+{
+	if(action == MenuAction_Select)
+	{
+		char info[16];
+		char display[16];
+		menu.GetItem(param2, info, 16, _, display, 16);
+
+		int style = StringToInt(info);
+		
+		if(StrEqual(info, "stop") && CanStopCentral(param1))
+		{
+			StopCentralReplay(param1);
+			OpenReplaySubMenu(param1, gI_Track[param1]);
+
+			return 0;
+		}
+		if(StrContains(display, "Pause") != -1 && CanStopCentral(param1))
+		{
+			if(gF_ReplayTimeScale[style] != 0.0)
+			{
+				gF_ReplayTimeScale[style] = 0.0;
+			}
+			else
+			{
+				gF_ReplayTimeScale[style] = 1.0;
+			}
+
+			SendTimeScaleMenu(param1, gA_CentralCache.iStyle, gA_CentralCache.iTrack);
+
+			return 0;
+		}
+		else if(StrContains(display, "Forward", false) != -1)
+		{
+			gB_ReplayBackwards[style] = false;
+		}
+		else if(StrContains(display, "Rewind", false) != -1)
+		{
+			gB_ReplayBackwards[style] = true;
+		}
+
+		gF_ReplayTimeScale[style] = FloatAbs(gF_ReplayTimeScale[style]);
+
+		if(StrEqual(info, "edit"))
+		{
+			switch(gF_ReplayTimeScale[style])
+			{
+				case 0.25:
+				{
+					gF_ReplayTimeScale[style] = 0.5;
+				}
+				case 0.5:
+				{
+					gF_ReplayTimeScale[style] = 1.0;
+				}
+				case 1.0:
+				{
+					gF_ReplayTimeScale[style] = 1.5;
+				}
+				case 1.5:
+				{
+					gF_ReplayTimeScale[style] = 2.0;
+				}
+				case 2.0:
+				{
+					gF_ReplayTimeScale[style] = 4.0;
+				}
+				case 4.0:
+				{
+					gF_ReplayTimeScale[style] = 0.25;
+				}
+				default:
+				{
+					gF_ReplayTimeScale[style] = 1.0;
+				}
+			}
+		}
+
+		if(gB_ReplayBackwards[style])
+		{
+			gF_ReplayTimeScale[style] *= -1.0;
+		}
+
+		SendTimeScaleMenu(param1, gA_CentralCache.iStyle, gA_CentralCache.iTrack);
+
+		return 0;
 	}
 
 	return 0;
@@ -2485,7 +2639,8 @@ void StopCentralReplay(int client)
 	}
 
 	gRS_ReplayStatus[style] = gA_CentralCache.iReplayStatus = Replay_Idle;
-	gI_ReplayTick[style] = 0;
+	gF_ReplayTick[style] = 0.0;
+	gF_ReplayTimeScale[style] = 1.0;
 	gI_ReplayBotClient[style] = 0;
 	gF_StartTick[style] = -65535.0;
 	gA_CentralCache.iStyle = 0;
