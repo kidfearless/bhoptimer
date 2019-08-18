@@ -84,7 +84,6 @@ Handle gH_Forwards_OnStyleConfigLoaded = null;
 Handle gH_Forwards_OnDatabaseLoaded = null;
 Handle gH_Forwards_OnChatConfigLoaded = null;
 Handle gH_Forwards_OnUserCmdPre = null;
-Handle gH_Forwards_OnUserCmdPost = null;
 Handle gH_Forwards_OnTimerIncrement = null;
 Handle gH_Forwards_OnTimerIncrementPost = null;
 
@@ -238,7 +237,6 @@ public void OnPluginStart()
 	gH_Forwards_OnDatabaseLoaded = CreateGlobalForward("Shavit_OnDatabaseLoaded", ET_Event);
 	gH_Forwards_OnChatConfigLoaded = CreateGlobalForward("Shavit_OnChatConfigLoaded", ET_Event);
 	gH_Forwards_OnUserCmdPre = CreateGlobalForward("Shavit_OnUserCmdPre", ET_Event, Param_Cell, Param_CellByRef, Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_Array, Param_Array);
-	gH_Forwards_OnUserCmdPost = CreateGlobalForward("Shavit_OnUserCmdPost", ET_Event, Param_Cell, Param_CellByRef, Param_CellByRef, Param_Array, Param_Array, Param_Cell, Param_Cell, Param_Cell, Param_Array, Param_Array);
 	gH_Forwards_OnTimerIncrement = CreateGlobalForward("Shavit_OnTimeIncrement", ET_Event, Param_Cell, Param_Array, Param_CellByRef, Param_Array);
 	gH_Forwards_OnTimerIncrementPost = CreateGlobalForward("Shavit_OnTimeIncrementPost", ET_Event, Param_Cell, Param_Cell, Param_Array);
 
@@ -485,15 +483,15 @@ public Action Command_StartTimer(int client, int args)
 			return Plugin_Handled;
 		}
 
-		Call_StartForward(gH_Forwards_OnRestart);
-		Call_PushCell(client);
-		Call_PushCell(track);
-		Call_Finish();
-
 		if(gCV_AllowTimerWithoutZone.BoolValue)
 		{
 			StartTimer(client, track);
 		}
+
+		Call_StartForward(gH_Forwards_OnRestart);
+		Call_PushCell(client);
+		Call_PushCell(track);
+		Call_Finish();
 	}
 
 	else
@@ -3006,24 +3004,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	gA_Timers[client].bOnGround = bOnGround;
 
 	
-	result = Plugin_Continue;
-	Call_StartForward(gH_Forwards_OnUserCmdPost);
-	Call_PushCell(client);
-	Call_PushCellRef(buttons);
-	Call_PushCellRef(impulse);
-	Call_PushArrayEx(vel, 3, SM_PARAM_COPYBACK);
-	Call_PushArrayEx(angles, 3, SM_PARAM_COPYBACK);
-	Call_PushCell(GetTimerStatus(client));
-	Call_PushCell(gA_Timers[client].iTrack);
-	Call_PushCell(gA_Timers[client].iStyle);
-	Call_PushArray(gA_StyleSettings[gA_Timers[client].iStyle], sizeof(stylesettings_t));
-	Call_PushArrayEx(mouse, 2, SM_PARAM_COPYBACK);
-	Call_Finish(result);
-	
-	if(result != Plugin_Continue && result != Plugin_Changed)
-	{
-		return result;
-	}
 
 	return Plugin_Continue;
 }

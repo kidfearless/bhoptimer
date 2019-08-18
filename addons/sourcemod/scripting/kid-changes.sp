@@ -84,7 +84,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 	gB_Noclipped[client] = (view_as<MoveType>(GetEntProp(client, Prop_Data, "m_MoveType")) == MOVETYPE_NOCLIP);
 	int flags = GetEntityFlags(client);
 
-	if(gB_Noclipped[client] && stylesettings.bPrespeed)
+	if(gB_Noclipped[client] && stylesettings.iPrespeed)
 	{
 		SetEntityMoveType(client, MOVETYPE_WALK);
 	}
@@ -95,7 +95,7 @@ public Action Shavit_OnUserCmdPre(int client, int &buttons, int &impulse, float 
 	}
 	
 	// prespeed
-	if(!gB_Noclipped[client] && !stylesettings.bPrespeed && Shavit_InsideZone(client, Zone_Start, track))
+	if(!gB_Noclipped[client] && !stylesettings.iPrespeed && Shavit_InsideZone(client, Zone_Start, track))
 	{
 		float speed[3];
 		float speed2;
@@ -146,7 +146,7 @@ public Action Shavit_OnSave(int client)
 	stylesettings_t stylesettings;
 	Shavit_GetStyleSettings(gI_Style[client], stylesettings);
 
-	if (stylesettings.bPrespeed)
+	if (stylesettings.iPrespeed)
 	{
 		return Plugin_Handled;
 	}

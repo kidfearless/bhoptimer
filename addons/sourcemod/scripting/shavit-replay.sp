@@ -50,6 +50,8 @@ enum struct centralbot_cache_t
 	ReplayStatus iReplayStatus;
 	int iTrack;
 	int iPlaybackSerial;
+	float fSpeed;
+	bool bRewinding;
 }
 
 enum struct replaystrings_t
@@ -415,8 +417,6 @@ void UnloadReplay(int style, int track)
 	gA_FrameCache[style][track].bNewFormat = true;
 	strcopy(gA_FrameCache[style][track].sReplayName, MAX_NAME_LENGTH, "invalid");
 	gF_ReplayTick[style] = -1.0;
-	gF_ReplayTimeScale[style] = 1.0;
-	gB_ReplayBackwards[style] = false;
 
 	if(gI_ReplayBotClient[style] != 0)
 	{
@@ -489,8 +489,6 @@ public int Native_ReloadReplay(Handle handler, int numParams)
 	int style = GetNativeCell(1);
 
 	gF_ReplayTick[style] = -1.0;
-	gF_ReplayTimeScale[style] = 1.0;
-	gB_ReplayBackwards[style] = false;
 	gF_StartTick[style] = -65535.0;
 	gRS_ReplayStatus[style] = Replay_Idle;
 
@@ -539,8 +537,6 @@ public int Native_ReloadReplay(Handle handler, int numParams)
 		{
 			gF_ReplayTick[style] = 0.0;
 			gRS_ReplayStatus[style] = Replay_Start;
-			gF_ReplayTimeScale[style] = 1.0;
-			gB_ReplayBackwards[style] = false;
 
 			delete gH_ReplayTimers[style];
 			gH_ReplayTimers[style] = CreateTimer((gCV_ReplayDelay.FloatValue / 2.0), Timer_StartReplay, style, TIMER_FLAG_NO_MAPCHANGE);
@@ -858,8 +854,6 @@ public void OnMapStart()
 	for(int i = 0; i < gI_Styles; i++)
 	{
 		gF_ReplayTick[i] = -1.0;
-		gF_ReplayTimeScale[i] = 1.0;
-		gB_ReplayBackwards[i] = false;
 		gF_StartTick[i] = -65535.0;
 		gRS_ReplayStatus[i] = Replay_Idle;
 
@@ -1634,8 +1628,6 @@ public void Shavit_OnFinish(int client, int style, float time, int jumps, int st
 
 			gRS_ReplayStatus[style] = Replay_Running;
 			gF_ReplayTick[style] = 0.0;
-			gF_ReplayTimeScale[style] = 1.0;
-			gB_ReplayBackwards[style] = false;
 
 			float vecPosition[3];
 			vecPosition[0] = gA_Frames[style][track].Get(0, 0);
@@ -1742,7 +1734,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				return Plugin_Changed;
 			}
 
-			gF_ReplayTick[style] += gF_ReplayTimeScale[style];
+			gF_ReplayTick[style] += gA_CentralCache.fSpeed;
 			int tick = RoundFloat(gF_ReplayTick[style]);
 			if(tick < 0)
 			{
@@ -1751,8 +1743,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			if(tick >= gA_FrameCache[style][track].iFrameCount - 1)
 			{
 				gF_ReplayTick[style] = 0.0;
-				gF_ReplayTimeScale[style] = 1.0;	
-				gB_ReplayBackwards[style] = false;	
 				gRS_ReplayStatus[style] = gA_CentralCache.iReplayStatus = Replay_End;
 
 				delete gH_ReplayTimers[style];
@@ -1920,8 +1910,6 @@ public Action Timer_EndReplay(Handle Timer, any data)
 	}
 
 	gF_ReplayTick[data] = 0.0;
-	gF_ReplayTimeScale[data] = 1.0;
-	gB_ReplayBackwards[data] = false;
 
 	Call_StartForward(gH_OnReplayEnd);
 	Call_PushCell(gI_ReplayBotClient[data]);
@@ -2435,8 +2423,8 @@ public int MenuHandler_ReplaySubmenu(Menu menu, MenuAction action, int param1, i
 		else
 		{
 			gF_ReplayTick[style] = 0.0;
-			gF_ReplayTimeScale[style] = 1.0;
-			gB_ReplayBackwards[style] = false;
+			gA_CentralCache.fSpeed = 1.0;
+			gA_CentralCache.bRewinding = false;
 			gA_CentralCache.iStyle = style;
 			gA_CentralCache.iTrack = gI_Track[param1];
 			gA_CentralCache.iPlaybackSerial = GetClientSerial(param1);
@@ -2493,13 +2481,13 @@ void SendTimeScaleMenu(int client, int style, int track)
 
 	char display[16];
 
-	FormatEx(display, 16, "%sForward", !gB_ReplayBackwards[style]? "-> ":"");
+	FormatEx(display, 16, "%sForward", !gA_CentralCache.bRewinding? "-> ":"");
 	gM_Timescale.AddItem(info, display);
 
-	FormatEx(display, 16, "%sRewind", gB_ReplayBackwards[style]? "-> ":"");
+	FormatEx(display, 16, "%sRewind", gA_CentralCache.bRewinding? "-> ":"");
 	gM_Timescale.AddItem(info, display);
 
-	FormatEx(display, 16, "Edit Speed %.2f", gF_ReplayTimeScale[style]);
+	FormatEx(display, 16, "Edit Speed %.2f", gA_CentralCache.fSpeed);
 	gM_Timescale.AddItem("edit", display);
 
 	gM_Timescale.Display(client, MENU_TIME_FOREVER);
@@ -2524,13 +2512,13 @@ public int MenuHandler_ReplayTimeScaleMenu(Menu menu, MenuAction action, int par
 		}
 		if(StrContains(display, "Pause") != -1 && CanStopCentral(param1))
 		{
-			if(gF_ReplayTimeScale[style] != 0.0)
+			if(gA_CentralCache.fSpeed != 0.0)
 			{
-				gF_ReplayTimeScale[style] = 0.0;
+				gA_CentralCache.fSpeed = 0.0;
 			}
 			else
 			{
-				gF_ReplayTimeScale[style] = 1.0;
+				gA_CentralCache.fSpeed = 1.0;
 			}
 
 			SendTimeScaleMenu(param1, gA_CentralCache.iStyle, gA_CentralCache.iTrack);
@@ -2539,53 +2527,53 @@ public int MenuHandler_ReplayTimeScaleMenu(Menu menu, MenuAction action, int par
 		}
 		else if(StrContains(display, "Forward", false) != -1)
 		{
-			gB_ReplayBackwards[style] = false;
+			gA_CentralCache.bRewinding = false;
 		}
 		else if(StrContains(display, "Rewind", false) != -1)
 		{
-			gB_ReplayBackwards[style] = true;
+			gA_CentralCache.bRewinding = true;
 		}
 
-		gF_ReplayTimeScale[style] = FloatAbs(gF_ReplayTimeScale[style]);
+		gA_CentralCache.fSpeed = FloatAbs(gA_CentralCache.fSpeed);
 
 		if(StrEqual(info, "edit"))
 		{
-			switch(gF_ReplayTimeScale[style])
+			switch(gA_CentralCache.fSpeed)
 			{
 				case 0.25:
 				{
-					gF_ReplayTimeScale[style] = 0.5;
+					gA_CentralCache.fSpeed = 0.5;
 				}
 				case 0.5:
 				{
-					gF_ReplayTimeScale[style] = 1.0;
+					gA_CentralCache.fSpeed = 1.0;
 				}
 				case 1.0:
 				{
-					gF_ReplayTimeScale[style] = 1.5;
+					gA_CentralCache.fSpeed = 1.5;
 				}
 				case 1.5:
 				{
-					gF_ReplayTimeScale[style] = 2.0;
+					gA_CentralCache.fSpeed = 2.0;
 				}
 				case 2.0:
 				{
-					gF_ReplayTimeScale[style] = 4.0;
+					gA_CentralCache.fSpeed = 4.0;
 				}
 				case 4.0:
 				{
-					gF_ReplayTimeScale[style] = 0.25;
+					gA_CentralCache.fSpeed = 0.25;
 				}
 				default:
 				{
-					gF_ReplayTimeScale[style] = 1.0;
+					gA_CentralCache.fSpeed = 1.0;
 				}
 			}
 		}
 
-		if(gB_ReplayBackwards[style])
+		if(gA_CentralCache.bRewinding && gA_CentralCache.fSpeed > 0.0)
 		{
-			gF_ReplayTimeScale[style] *= -1.0;
+			gA_CentralCache.fSpeed *= -1.0;
 		}
 
 		SendTimeScaleMenu(param1, gA_CentralCache.iStyle, gA_CentralCache.iTrack);
@@ -2640,8 +2628,8 @@ void StopCentralReplay(int client)
 
 	gRS_ReplayStatus[style] = gA_CentralCache.iReplayStatus = Replay_Idle;
 	gF_ReplayTick[style] = 0.0;
-	gF_ReplayTimeScale[style] = 1.0;
-	gI_ReplayBotClient[style] = 0;
+	gA_CentralCache.fSpeed = 1.0;
+	gA_CentralCache.bRewinding = false;
 	gF_StartTick[style] = -65535.0;
 	gA_CentralCache.iStyle = 0;
 	gB_ForciblyStopped = true;
